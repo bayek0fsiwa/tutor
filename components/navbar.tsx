@@ -55,6 +55,7 @@ export function Navbar() {
               fill
               className="object-contain"
               priority
+              sizes="0"
             />
           </div>
 
