@@ -27,7 +27,11 @@ export const useAudioStore = create<AudioStore>()(
             }
             let manager = state.liveManagerInstance;
             if (!manager) {
-                manager = new LiveManager();
+                // @ts-ignore
+                manager = new LiveManager({
+                    onStateChange: (state) => { set({ connectionState: state }); },
+                    onError: (err) => set({ error: err })
+                });
                 set({ liveManagerInstance: manager });
             }
             manager.startSession();
