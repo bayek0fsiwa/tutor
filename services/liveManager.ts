@@ -1,6 +1,6 @@
-import { createPCMBlob } from "@/lib/audioUtils";
+import { base64ToUint8Array, createPCMBlob, decodeAudioData } from "@/lib/audioUtils";
 import { INPUT_SAMPLE_RATE, MODEL, OUTPUT_SAMPLE_RATE } from "@/lib/constants";
-import { GoogleGenAI, Modality, Session } from "@google/genai";
+import { GoogleGenAI, LiveServerMessage, Modality, Session } from "@google/genai";
 
 export class LiveManager {
     private ai: GoogleGenAI;
@@ -11,6 +11,8 @@ export class LiveManager {
     private mediaStream: MediaStream | null = null;
     private workletNode: AudioWorkletNode | null = null;
     private inputSource: MediaStreamAudioSourceNode | null = null;
+    private nextStartTime = 0;
+    private sources = new Set<AudioBufferSourceNode>();
 
     constructor() {
         this.ai = new GoogleGenAI({ apiKey: process.env.NEXT_PUBLIC_GEMINI_API_KEY });
@@ -27,7 +29,8 @@ export class LiveManager {
             config: config,
             callbacks: {
                 onopen: () => console.log("Connected to Gemini."),
-                onmessage: (message) => console.log("Message", message),
+                onmessage: this.handleMessage.bind(this),
+                // onmessage: (message) => console.log("Message", message),
                 onerror: (e) => console.error("Error", e.message),
                 onclose: (e) => console.log("Closed", e.reason),
             },
@@ -65,8 +68,31 @@ export class LiveManager {
 
         this.inputSource = this.inputAudioContext.createMediaStreamSource(this.mediaStream);
         this.inputSource.connect(this.workletNode);
-
         console.log("Active session", this.activeSession);
+    }
 
+    async handleMessage(message: LiveServerMessage) {
+        const serverContent = message.serverContent;
+        const base64Data = serverContent?.modelTurn?.parts?.[0].inlineData?.data;
+        if (!base64Data) {
+            return;
+        }
+        await this.playAudioChunk(base64Data as string);
+        console.log("output context", this.inputAudioContext);
+    }
+
+    async playAudioChunk(audioData: string) {
+        const uintData = base64ToUint8Array(audioData);
+        if (!this.outputAudioContext || !this.outputNode) return;
+        const audioBuffer = await decodeAudioData(uintData, this.outputAudioContext, OUTPUT_SAMPLE_RATE, 1);
+        const source = this.outputAudioContext.createBufferSource();
+        source.buffer = audioBuffer;
+        source.connect(this.outputNode);
+        source.start(this.nextStartTime);
+        this.nextStartTime += audioBuffer.duration;
+        source.addEventListener("ended", () => {
+            this.sources.delete(source);
+        });
+        this.sources.add(source);
     }
 }
