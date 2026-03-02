@@ -7,8 +7,10 @@ import { LiveManager } from "@/services/liveManager";
 type AudioStore = {
     connectionState: ConnectionState;
     error: string | null;
+    isMuted: boolean;
     liveManagerInstance: LiveManager;
     connect: () => Promise<void>;
+    toggleMute: () => void;
 };
 
 export const useAudioStore = create<AudioStore>()(
@@ -16,6 +18,13 @@ export const useAudioStore = create<AudioStore>()(
         connectionState: ConnectionState.DISCONNECTED,
         liveManagerInstance: null,
         error: null,
+        isMuted: false,
+        toggleMute: () => {
+            const state = get();
+            const newState = !state.isMuted;
+            set({ isMuted: newState });
+            state.liveManagerInstance.setMute(newState);
+        },
         connect: async () => {
             const state = get();
             if (state.connectionState === ConnectionState.CONNECTING || state.connectionState === ConnectionState.CONNECTED) return;
