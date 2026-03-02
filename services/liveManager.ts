@@ -85,6 +85,9 @@ export class LiveManager {
         const uintData = base64ToUint8Array(audioData);
         if (!this.outputAudioContext || !this.outputNode) return;
         const audioBuffer = await decodeAudioData(uintData, this.outputAudioContext, OUTPUT_SAMPLE_RATE, 1);
+        if (this.nextStartTime < this.outputAudioContext.currentTime) {
+            this.nextStartTime = this.outputAudioContext.currentTime;
+        }
         const source = this.outputAudioContext.createBufferSource();
         source.buffer = audioBuffer;
         source.connect(this.outputNode);
