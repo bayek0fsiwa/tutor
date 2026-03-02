@@ -73,6 +73,9 @@ export class LiveManager {
 
     async handleMessage(message: LiveServerMessage) {
         const serverContent = message.serverContent;
+        if (serverContent?.interrupted) {
+            await this.stopAllAudio();
+        }
         const base64Data = serverContent?.modelTurn?.parts?.[0].inlineData?.data;
         if (!base64Data) {
             return;
@@ -97,5 +100,17 @@ export class LiveManager {
             this.sources.delete(source);
         });
         this.sources.add(source);
+    }
+
+    async stopAllAudio() {
+        try {
+            this.sources.forEach((source) => {
+                source.stop();
+            });
+        } catch { }
+        this.sources.clear();
+        if (this.outputAudioContext) {
+            this.nextStartTime = this.outputAudioContext?.currentTime;
+        }
     }
 }
