@@ -8,7 +8,7 @@ type AudioStore = {
     connectionState: ConnectionState;
     error: string | null;
     isMuted: boolean;
-    liveManagerInstance: LiveManager;
+    liveManagerInstance: LiveManager | null;
     connect: () => Promise<void>;
     toggleMute: () => void;
 };
@@ -23,7 +23,7 @@ export const useAudioStore = create<AudioStore>()(
             const state = get();
             const newState = !state.isMuted;
             set({ isMuted: newState });
-            state.liveManagerInstance.setMute(newState);
+            state.liveManagerInstance?.setMute(newState);
         },
         connect: async () => {
             const state = get();
